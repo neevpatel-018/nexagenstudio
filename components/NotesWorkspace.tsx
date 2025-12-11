@@ -11,7 +11,8 @@ import {
   AlignLeft,
   Code2,
   Play,
-  Terminal
+  Terminal,
+  Download
 } from 'lucide-react';
 import { NoteBlock, BlockType, CodeLanguage } from '../types';
 import { executeCode } from '../services/geminiService';
@@ -49,6 +50,14 @@ const EditableBlock = React.forwardRef<HTMLElement, EditableBlockProps>(({
     onChange(id, e.currentTarget.innerHTML);
   };
 
+  // Improved Sync: Only update innerHTML if it differs significantly.
+  // This prevents the cursor from jumping to the start on every re-render while typing.
+  useEffect(() => {
+    if (contentEditableRef.current && contentEditableRef.current.innerHTML !== html) {
+      contentEditableRef.current.innerHTML = html;
+    }
+  }, [html]);
+
   return React.createElement(tagName, {
     className: `${className} empty:before:content-[attr(placeholder)] empty:before:text-slate-300 dark:empty:before:text-slate-600 focus:outline-none cursor-text`,
     contentEditable: true,
@@ -58,7 +67,7 @@ const EditableBlock = React.forwardRef<HTMLElement, EditableBlockProps>(({
     onKeyDown: (e: React.KeyboardEvent) => onKeyDown(e, id),
     onFocus: () => onFocus(id),
     placeholder: placeholder,
-    dangerouslySetInnerHTML: { __html: html }
+    // Do NOT use dangerouslySetInnerHTML here for updates, relying on useEffect instead for stability
   });
 });
 
@@ -74,7 +83,6 @@ const CodeBlockItem: React.FC<CodeBlockItemProps> = ({ block, updateBlock, remov
 
   const handleRun = async () => {
     setIsRunning(true);
-    // Use default text if output is empty to show something is happening
     updateBlock(block.id, { output: '' });
     
     const result = await executeCode(block.content, block.language || CodeLanguage.JAVASCRIPT);
@@ -194,13 +202,9 @@ const NotesWorkspace: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const blockRefs = useRef<{[key: string]: HTMLElement | null}>({});
 
-  // Focus management
   useEffect(() => {
-    // Only auto-focus textual blocks that use EditableBlock (refs)
-    if (activeBlockId && blockRefs.current[activeBlockId]) {
-       // We don't force focus here on every render to avoid fighting the user
-    }
-  }, [activeBlockId]);
+    // Initialization of blocks content is handled by EditableBlock useEffect
+  }, []);
 
   const addBlock = (afterId: string, type: BlockType = 'paragraph') => {
     const newBlock: NoteBlock = { 
@@ -216,7 +220,6 @@ const NotesWorkspace: React.FC = () => {
       newBlocks.splice(index + 1, 0, newBlock);
       setBlocks(newBlocks);
       
-      // Schedule focus for next tick if it's a text block
       if (type !== 'code' && type !== 'image') {
         setTimeout(() => {
             setActiveBlockId(newBlock.id);
@@ -224,7 +227,6 @@ const NotesWorkspace: React.FC = () => {
         }, 0);
       }
     } else {
-        // Append if ID not found (fallback)
         setBlocks([...blocks, newBlock]);
     }
   };
@@ -239,7 +241,6 @@ const NotesWorkspace: React.FC = () => {
 
   const updateBlockType = (id: string, type: BlockType) => {
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, type } : b));
-    // Focus remains if switching between text types
     if (type !== 'code' && type !== 'image') {
         setTimeout(() => {
             blockRefs.current[id]?.focus();
@@ -248,7 +249,7 @@ const NotesWorkspace: React.FC = () => {
   };
 
   const deleteBlock = (id: string) => {
-    if (blocks.length <= 1) return; // Don't delete last block
+    if (blocks.length <= 1) return;
     const index = blocks.findIndex(b => b.id === id);
     const prevBlock = blocks[index - 1];
     
@@ -278,9 +279,8 @@ const NotesWorkspace: React.FC = () => {
       addBlock(id);
     } else if (e.key === 'Backspace') {
        const block = blocks.find(b => b.id === id);
-       // Check if empty content (or simple <br>)
        const el = blockRefs.current[id];
-       // Simple check for emptiness (including handling HTML break tags sometimes inserted by contentEditable)
+       // Check if empty
        const isEmpty = !el?.innerText.trim() && block?.type !== 'image' && block?.type !== 'code';
        
        if (isEmpty && blocks.length > 1) {
@@ -295,7 +295,6 @@ const NotesWorkspace: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Add after active or at end
         const newBlock: NoteBlock = { 
             id: Date.now().toString(), 
             type: 'image', 
@@ -319,7 +318,6 @@ const NotesWorkspace: React.FC = () => {
      if (activeBlockId) {
          addBlock(activeBlockId, 'code');
      } else {
-         // Add to end
          const lastId = blocks[blocks.length - 1].id;
          addBlock(lastId, 'code');
      }
@@ -331,6 +329,26 @@ const NotesWorkspace: React.FC = () => {
 
   const getActiveBlockType = () => {
     return blocks.find(b => b.id === activeBlockId)?.type || 'paragraph';
+  };
+
+  const handleExport = () => {
+    const content = blocks.map(b => {
+      if(b.type === 'code') return `\`\`\`${b.language}\n${b.content}\n\`\`\``;
+      if(b.type === 'h1') return `# ${b.content}`;
+      if(b.type === 'h2') return `## ${b.content}`;
+      if(b.type === 'bullet') return `- ${b.content}`;
+      return b.content;
+    }).join('\n\n');
+
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, '_')}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -393,6 +411,16 @@ const NotesWorkspace: React.FC = () => {
             >
                 <ImageIcon size={18} />
             </button>
+
+            <div className="w-px h-5 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+
+            <button 
+                onClick={handleExport}
+                className="p-2 rounded-md hover:bg-white dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
+                title="Export to Markdown"
+            >
+                <Download size={18} />
+            </button>
          </div>
       </div>
 
@@ -410,7 +438,6 @@ const NotesWorkspace: React.FC = () => {
             {/* Blocks */}
             <div className="space-y-1">
             {blocks.map((block) => {
-                // Code Block Handler
                 if (block.type === 'code') {
                     return (
                         <CodeBlockItem 
@@ -422,7 +449,6 @@ const NotesWorkspace: React.FC = () => {
                     );
                 }
 
-                // Image Block Handler
                 if (block.type === 'image') {
                     return (
                         <div key={block.id} className="relative group my-6">
@@ -448,7 +474,6 @@ const NotesWorkspace: React.FC = () => {
                     );
                 }
 
-                // Text Blocks Handler
                 let Tag = 'div';
                 let styles = 'text-lg text-slate-700 dark:text-slate-300 leading-relaxed min-h-[1.5em]';
                 let placeholder = "Type '/' for commands";
@@ -466,12 +491,10 @@ const NotesWorkspace: React.FC = () => {
 
                 return (
                     <div key={block.id} className="group relative flex items-start -ml-8 pl-8 py-1">
-                        {/* Hover Drag/Menu Handle */}
                         <div className="absolute left-0 top-2.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500">
                             <MoreVertical size={16} />
                         </div>
 
-                        {/* Bullet styling wrapper */}
                         {block.type === 'bullet' && (
                             <div className="mr-3 mt-2.5 h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-500 flex-shrink-0 select-none" />
                         )}
@@ -493,7 +516,6 @@ const NotesWorkspace: React.FC = () => {
                 );
             })}
             
-            {/* Empty state helper if no blocks */}
             {blocks.length === 0 && (
                 <button onClick={() => addBlock('0')} className="text-slate-400 italic hover:text-slate-600">
                     Click to start writing...
@@ -503,7 +525,6 @@ const NotesWorkspace: React.FC = () => {
         </div>
       </div>
       
-      {/* Hidden inputs */}
       <input 
         type="file" 
         ref={fileInputRef} 

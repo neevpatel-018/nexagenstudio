@@ -72,7 +72,7 @@ const App: React.FC = () => {
       <Sidebar 
         currentPage={currentPage} 
         onNavigate={setCurrentPage}
-        onCreateNew={() => handleCreateNew(PageType.CODE)}
+        onCreateNew={(type) => handleCreateNew(type)}
         favorites={recents.filter(r => r.isFavorite)}
         recents={recents.slice(0, 5)}
       />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckSquare, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { CheckSquare, ChevronLeft, ChevronRight, Check, Download } from 'lucide-react';
 
 const PlannerWorkspace: React.FC = () => {
   const [todos, setTodos] = useState([
@@ -23,6 +23,23 @@ const PlannerWorkspace: React.FC = () => {
         setTodos([...todos, { id: Date.now(), text: newTodo, completed: false }]);
         setNewTodo("");
     }
+  };
+
+  const handleSave = () => {
+    const data = {
+        date: new Date().toISOString(),
+        todos,
+        reflection
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `daily_plan_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Simple mock calendar grid
@@ -102,7 +119,16 @@ const PlannerWorkspace: React.FC = () => {
       {/* Right Column: Reflections */}
       <div className="flex-1 p-8 overflow-y-auto">
          <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Daily Reflection</h2>
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Daily Reflection</h2>
+                <button 
+                    onClick={handleSave}
+                    className="flex items-center gap-2 text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 bg-brand-50 dark:bg-brand-900/30 px-3 py-1.5 rounded-lg"
+                >
+                    <Download size={16} />
+                    Save JSON
+                </button>
+            </div>
             <p className="text-slate-500 mb-8">Take a moment to analyze your progress.</p>
 
             <div className="space-y-8">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Copy, Save, Check } from 'lucide-react';
+import { Play, Copy, Save, Check, Download } from 'lucide-react';
 import { CodeLanguage } from '../types';
 import { executeCode } from '../services/geminiService';
 import Editor from 'react-simple-code-editor';
@@ -24,6 +24,26 @@ const CodeWorkspace: React.FC = () => {
   const handleSave = () => {
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
+    
+    // Download File
+    const extensionMap: Record<string, string> = {
+      javascript: 'js',
+      python: 'py',
+      java: 'java',
+      cpp: 'cpp',
+      go: 'go',
+      rust: 'rs'
+    };
+    const ext = extensionMap[language] || 'txt';
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `project.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   const highlightCode = (code: string) => {
@@ -67,10 +87,11 @@ const CodeWorkspace: React.FC = () => {
           <div className="flex items-center gap-2">
             <button 
                 onClick={handleSave}
-                className="p-2 text-slate-500 hover:text-brand-600 transition-colors"
-                title="Save"
+                className="flex items-center gap-1 px-3 py-1.5 text-slate-500 hover:text-brand-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-sm font-medium"
+                title="Save & Download"
             >
-                {isSaved ? <Check size={18} className="text-green-500"/> : <Save size={18} />}
+                {isSaved ? <Check size={16} className="text-green-500"/> : <Download size={16} />}
+                <span>{isSaved ? 'Saved' : 'Save'}</span>
             </button>
             <button 
               onClick={handleRun}

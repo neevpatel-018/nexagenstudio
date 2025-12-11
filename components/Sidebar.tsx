@@ -16,7 +16,7 @@ interface SidebarProps {
   onNavigate: (page: PageMetadata | null) => void;
   favorites: PageMetadata[];
   recents: PageMetadata[];
-  onCreateNew: () => void;
+  onCreateNew: (type?: PageType) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, favorites, recents, onCreateNew }) => {
@@ -59,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, favorites, r
       {/* Main Nav */}
       <div className="flex-1 overflow-y-auto px-3">
         <button 
-          onClick={onCreateNew}
+          onClick={() => onCreateNew()}
           className="w-full mb-6 flex items-center justify-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
         >
           <Plus size={16} />
@@ -74,9 +74,24 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, favorites, r
         />
 
         <SectionHeader label="Workspace" />
-        <NavItem icon={Code2} label="Code + Notes" onClick={() => {}} highlight={currentPage?.type === PageType.CODE} />
-        <NavItem icon={FileText} label="Text + Images" onClick={() => {}} highlight={currentPage?.type === PageType.NOTES} />
-        <NavItem icon={Calendar} label="Planner" onClick={() => {}} highlight={currentPage?.type === PageType.PLANNER} />
+        <NavItem 
+          icon={Code2} 
+          label="Code + Notes" 
+          onClick={() => onCreateNew(PageType.CODE)} 
+          highlight={currentPage?.type === PageType.CODE} 
+        />
+        <NavItem 
+          icon={FileText} 
+          label="Text + Images" 
+          onClick={() => onCreateNew(PageType.NOTES)} 
+          highlight={currentPage?.type === PageType.NOTES} 
+        />
+        <NavItem 
+          icon={Calendar} 
+          label="Planner" 
+          onClick={() => onCreateNew(PageType.PLANNER)} 
+          highlight={currentPage?.type === PageType.PLANNER} 
+        />
 
         <SectionHeader label="Favorites" />
         {favorites.length === 0 && (
