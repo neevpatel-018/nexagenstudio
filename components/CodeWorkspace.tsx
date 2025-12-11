@@ -3,8 +3,7 @@ import { Play, Copy, Save, Check } from 'lucide-react';
 import { CodeLanguage } from '../types';
 import { executeCode } from '../services/geminiService';
 import Editor from 'react-simple-code-editor';
-
-declare const Prism: any;
+import Prism from 'prismjs';
 
 const CodeWorkspace: React.FC = () => {
   const [code, setCode] = useState<string>(`// Write your code here\nconsole.log("Hello Nexagen!");`);

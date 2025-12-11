@@ -16,8 +16,7 @@ import {
 import { NoteBlock, BlockType, CodeLanguage } from '../types';
 import { executeCode } from '../services/geminiService';
 import Editor from 'react-simple-code-editor';
-
-declare const Prism: any;
+import Prism from 'prismjs';
 
 // Helper component for ContentEditable
 interface EditableBlockProps {
